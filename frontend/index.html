@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PowerStep Grid — لوحة التحكم الحية</title>
+<script src="vendor/chart.umd.js"></script>
+<style>
+  @font-face{
+    font-family:'Cairo';
+    src:url('vendor/fonts/Cairo-Regular.ttf');
+    font-weight:400 800;
+  }
+  :root{
+    --green:#1f7a5c; --green-dark:#0b2f2a; --blue:#16487a; --purple:#6a1f8a; --orange:#b5590a;
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1f2430; --muted:#6b7280; --line:#e5e8ee;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Cairo',sans-serif; direction:rtl;
+  }
+  .mono{ font-family:'Consolas','Courier New',monospace; }
+
+  header{
+    background:linear-gradient(120deg,var(--green-dark),var(--green) 70%);
+    color:#fff; padding:18px 26px; display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:10px;
+  }
+  header .title{ font-size:1.35rem; font-weight:800; }
+  header .subtitle{ font-size:.78rem; opacity:.85; margin-top:2px; }
+  header .status{
+    display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.12);
+    padding:7px 16px; border-radius:20px; font-size:.82rem;
+  }
+  header .dot{ width:9px; height:9px; border-radius:50%; background:#6ee7a8; box-shadow:0 0 0 3px rgba(110,231,168,.25); }
+  header .sim-time{ font-weight:700; }
+
+  main{ padding:20px 26px 40px; max-width:1300px; margin:0 auto; }
+
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+  .grid2{ display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:16px; }
+  .grid2b{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+  @media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} .grid2, .grid2b{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px;
+  }
+  .card h3{ margin:0 0 12px; font-size:.85rem; color:var(--muted); font-weight:700; }
+
+  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; }
+  .gauge{
+    width:120px; height:120px; border-radius:50%; position:relative;
+    display:flex; align-items:center; justify-content:center;
+    background:conic-gradient(var(--ring-color) calc(var(--pct) * 1%), var(--line) 0);
+    transition: background 0.6s ease;
+  }
+  .gauge::before{
+    content:""; position:absolute; width:88px; height:88px; border-radius:50%; background:var(--card);
+  }
+  .gauge .val{ position:relative; z-index:1; font-weight:800; font-size:1.15rem; }
+  .gauge .val small{ display:block; font-size:.62rem; font-weight:600; color:var(--muted); margin-top:2px; }
+
+  .battery{
+    width:100%; height:34px; background:var(--line); border-radius:8px; overflow:hidden; position:relative;
+  }
+  .battery .fill{
+    height:100%; background:linear-gradient(90deg,var(--blue),#2d7dd2); transition:width .6s ease;
+  }
+  .battery .label{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:#fff; font-size:.85rem; text-shadow:0 1px 2px rgba(0,0,0,.25);
+  }
+  .source-tag{ margin-top:8px; font-size:.72rem; text-align:center; color:var(--muted); }
+  .source-tag b{ color:var(--green); }
+  .source-tag.grid b{ color:var(--orange); }
+
+  .footfall-strip{
+    display:flex; gap:2px; height:44px; align-items:flex-end; overflow:hidden; border-radius:6px;
+  }
+  .footfall-strip .bar{
+    flex:1; background:var(--green); border-radius:2px 2px 0 0; min-width:2px; transition:height .4s ease;
+    opacity:.85;
+  }
+
+  .loads-list .row{
+    display:flex; align-items:center; justify-content:space-between; padding:9px 0;
+    border-bottom:1px dashed var(--line); font-size:.85rem;
+  }
+  .loads-list .row:last-child{ border-bottom:none; }
+  .badge{
+    padding:4px 11px; border-radius:20px; font-size:.72rem; font-weight:700; color:#fff; white-space:nowrap;
+  }
+  .badge.on{ background:var(--green); }
+  .badge.off{ background:#9aa3ad; }
+  .badge.wait{ background:var(--orange); }
+
+  .alerts-list .alert{
+    display:flex; align-items:flex-start; gap:9px; padding:9px 0; border-bottom:1px dashed var(--line);
+    font-size:.83rem; line-height:1.5;
+  }
+  .alerts-list .alert:last-child{ border-bottom:none; }
+  .alerts-list .dot{ width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+  .dot.warning{ background:var(--orange); }
+  .dot.info{ background:var(--blue); }
+  .dot.success{ background:var(--green); }
+  .dot.danger{ background:#c0392b; }
+  .alerts-empty{ color:var(--muted); font-size:.82rem; text-align:center; padding:20px 0; }
+
+  .tiles-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+  .tile-chip{
+    aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    font-size:.72rem; font-weight:800; color:#fff;
+  }
+
+  footer{ text-align:center; color:var(--muted); font-size:.75rem; padding:20px 0 30px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="title">⚡ PowerStep Grid</div>
+    <div class="subtitle">لوحة التحكم الحية — الأرضية المولّدة للطاقة المتكاملة</div>
+  </div>
+  <div class="status">
+    <span class="dot"></span>
+    <span>اليوم <span id="dayNum" class="mono">1</span> — الساعة المحاكاة <span id="simTime" class="sim-time mono">--:--</span></span>
+  </div>
+</header>
+
+<main>
+
+  <!-- الصف الأول: المؤشرات الأساسية -->
+  <div class="grid4">
+    <div class="card gauge-wrap">
+      <h3>التوليد اللحظي</h3>
+      <div class="gauge" id="gaugeGen" style="--ring-color:var(--green); --pct:0;">
+        <div class="val"><span id="genVal">0.0</span><small>واط</small></div>
+      </div>
+    </div>
+    <div class="card gauge-wrap">
+      <h3>الاستهلاك اللحظي</h3>
+      <div class="gauge" id="gaugeCon" style="--ring-color:var(--orange); --pct:0;">
+        <div class="val"><span id="conVal">0.0</span><small>واط</small></div>
+      </div>
+    </div>
+    <div class="card gauge-wrap">
+      <h3>الاكتفاء الذاتي اليوم</h3>
+      <div class="gauge" id="gaugeSelf" style="--ring-color:var(--purple); --pct:0;">
+        <div class="val"><span id="selfVal">0</span><small>%</small></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>شحن وحدة التخزين</h3>
+      <div class="battery">
+        <div class="fill" id="battFill" style="width:0%"></div>
+        <div class="label"><span id="battVal">0</span>%</div>
+      </div>
+      <div class="source-tag" id="sourceTag">المصدر: <b id="sourceLabel">—</b></div>
+    </div>
+  </div>
+
+  <!-- الصف الثاني: الرسم البياني + شريط الحركة -->
+  <div class="grid2">
+    <div class="card">
+      <h3>الطاقة التراكمية — المولَّدة مقابل المستهلكة (Wh)</h3>
+      <canvas id="energyChart" height="110"></canvas>
+    </div>
+    <div class="card">
+      <h3>كثافة الحركة الحية (خطوة/دقيقة)</h3>
+      <div class="footfall-strip" id="footfallStrip"></div>
+      <div style="margin-top:10px; text-align:center;">
+        <span class="mono" style="font-size:1.4rem; font-weight:800; color:var(--green);" id="footfallNow">0</span>
+        <div style="font-size:.72rem; color:var(--muted);">خطوة/دقيقة الآن</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- الصف الثالث: الأحمال + التنبيهات -->
+  <div class="grid2b">
+    <div class="card">
+      <h3>لوحة التحكم بالأحمال</h3>
+      <div class="loads-list" id="loadsList"></div>
+    </div>
+    <div class="card">
+      <h3>تنبيهات الذكاء الاصطناعي</h3>
+      <div class="alerts-list" id="alertsList"><div class="alerts-empty">لا توجد تنبيهات حاليًا</div></div>
+    </div>
+  </div>
+
+  <!-- الصف الرابع: صحة البلاط -->
+  <div class="card">
+    <h3>صحة البلاطات (كفاءة كل بلاطة %)</h3>
+    <div class="tiles-grid" id="tilesGrid"></div>
+  </div>
+
+</main>
+
+<footer>PowerStep Grid — بيانات محاكاة حية (Simulation Mode) · تحدَّث كل ثانية</footer>
+
+<script>
+const API = "http://localhost:8000";
+
+let chart;
+function initChart(){
+  const ctx = document.getElementById('energyChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label:'طاقة مولَّدة (Wh)', data:[], borderColor:'#1f7a5c', backgroundColor:'rgba(31,122,92,.08)', fill:true, tension:.3, pointRadius:0, borderWidth:2 },
+        { label:'طاقة مستهلَكة (Wh)', data:[], borderColor:'#b5590a', backgroundColor:'rgba(181,89,10,.06)', fill:true, tension:.3, pointRadius:0, borderWidth:2, borderDash:[5,3] },
+      ]
+    },
+    options: {
+      responsive:true,
+      animation:false,
+      plugins:{ legend:{ position:'top', rtl:true, labels:{ font:{family:'Cairo', size:11} } } },
+      scales:{
+        x:{ ticks:{ font:{family:'Cairo', size:9}, maxTicksLimit:8 } },
+        y:{ ticks:{ font:{family:'Cairo', size:9} } }
+      }
+    }
+  });
+}
+
+function setGauge(id, pct, valEl, val){
+  document.getElementById(id).style.setProperty('--pct', Math.min(pct,100));
+  document.getElementById(valEl).textContent = val;
+}
+
+function loadBadgeClass(state){
+  if(state.startsWith('ON')) return 'on';
+  if(state.startsWith('Standby')) return 'wait';
+  return 'off';
+}
+
+async function refreshLive(){
+  try{
+    const r = await fetch(API + "/api/live");
+    const d = await r.json();
+
+    document.getElementById('dayNum').textContent = d.day;
+    document.getElementById('simTime').textContent = d.sim_time;
+
+    setGauge('gaugeGen', d.generation_w * 10, 'genVal', d.generation_w.toFixed(1));
+    setGauge('gaugeCon', d.consumption_w * 10, 'conVal', d.consumption_w.toFixed(1));
+    setGauge('gaugeSelf', d.self_sufficiency_pct, 'selfVal', Math.round(d.self_sufficiency_pct));
+
+    document.getElementById('battFill').style.width = d.storage_soc_pct + '%';
+    document.getElementById('battVal').textContent = Math.round(d.storage_soc_pct);
+
+    const sourceTag = document.getElementById('sourceTag');
+    const sourceLabel = document.getElementById('sourceLabel');
+    if(d.power_source === 'harvested'){
+      sourceTag.classList.remove('grid');
+      sourceLabel.textContent = 'الطاقة المولَّدة';
+    } else {
+      sourceTag.classList.add('grid');
+      sourceLabel.textContent = 'الشبكة الاحتياطية';
+    }
+
+    document.getElementById('footfallNow').textContent = Math.round(d.footfall);
+
+    // الأحمال
+    const loadsList = document.getElementById('loadsList');
+    loadsList.innerHTML = '';
+    Object.values(d.loads).forEach(l=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span>${l.name}</span><span class="badge ${loadBadgeClass(l.state)}">${l.state}</span>`;
+      loadsList.appendChild(row);
+    });
+
+    // التنبيهات
+    const alertsList = document.getElementById('alertsList');
+    if(d.alerts.length === 0){
+      alertsList.innerHTML = '<div class="alerts-empty">لا توجد تنبيهات حاليًا</div>';
+    } else {
+      alertsList.innerHTML = '';
+      d.alerts.forEach(a=>{
+        const row = document.createElement('div');
+        row.className = 'alert';
+        row.innerHTML = `<span class="dot ${a.level}"></span><span>${a.text}</span>`;
+        alertsList.appendChild(row);
+      });
+    }
+
+    // صحة البلاط
+    const tilesGrid = document.getElementById('tilesGrid');
+    tilesGrid.innerHTML = '';
+    d.tiles.forEach(t=>{
+      const chip = document.createElement('div');
+      const eff = t.efficiency_pct;
+      const color = eff >= 90 ? '#1f7a5c' : eff >= 80 ? '#3f9d6f' : eff >= 65 ? '#b5590a' : '#c0392b';
+      chip.className = 'tile-chip';
+      chip.style.background = color;
+      chip.textContent = `#${t.id} ${Math.round(eff)}%`;
+      tilesGrid.appendChild(chip);
+    });
+
+  }catch(e){
+    console.error("تعذّر الاتصال بالسيرفر:", e);
+  }
+}
+
+async function refreshHistory(){
+  try{
+    const r = await fetch(API + "/api/history");
+    const d = await r.json();
+    if(!chart) return;
+    chart.data.labels = d.t.map(h=>{
+      const hh = Math.floor(h); const mm = Math.round((h-hh)*60);
+      return `${hh}:${mm.toString().padStart(2,'0')}`;
+    });
+    chart.data.datasets[0].data = d.gen_wh;
+    chart.data.datasets[1].data = d.con_wh;
+    chart.update();
+
+    // شريط كثافة الحركة (آخر 40 نقطة)
+    const strip = document.getElementById('footfallStrip');
+    strip.innerHTML = '';
+    const recent = d.footfall.slice(-40);
+    const max = Math.max(...recent, 1);
+    recent.forEach(v=>{
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = Math.max(4, (v/max)*44) + 'px';
+      strip.appendChild(bar);
+    });
+  }catch(e){ /* silent */ }
+}
+
+initChart();
+refreshLive();
+refreshHistory();
+setInterval(refreshLive, 1000);
+setInterval(refreshHistory, 4000);
+</script>
+
+</body>
+</html>
