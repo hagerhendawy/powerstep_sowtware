@@ -41,7 +41,8 @@
   .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
   .grid2{ display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:16px; }
   .grid2b{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
-  @media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} .grid2, .grid2b{grid-template-columns:1fr;} }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
+  @media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} .grid2, .grid2b, .grid3{grid-template-columns:1fr;} }
 
   .card{
     background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px;
@@ -112,6 +113,12 @@
     aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center;
     font-size:.72rem; font-weight:800; color:#fff;
   }
+
+  .stat-block{ text-align:center; padding:6px 0; }
+  .stat-block .big{ font-family:'Consolas','Courier New',monospace; font-size:2rem; font-weight:800; }
+  .stat-block .unit{ font-size:1rem; color:var(--muted); }
+  .stat-block .sub{ margin-top:8px; font-size:.75rem; color:var(--muted); }
+  .stat-block .hint{ margin-top:4px; font-size:.66rem; color:var(--muted); opacity:.8; }
 
   footer{ text-align:center; color:var(--muted); font-size:.75rem; padding:20px 0 30px; }
 </style>
@@ -189,7 +196,33 @@
     </div>
   </div>
 
-  <!-- الصف الرابع: صحة البلاط -->
+  <!-- الصف الرابع: بيانات الإشغال الحية (حقيقية من ESP32 أو محاكاة) + الحرارة -->
+  <div class="grid3">
+    <div class="card">
+      <h3>درجة الحرارة الحالية</h3>
+      <div class="stat-block">
+        <span class="big" id="tempVal" style="color:var(--orange);">--</span><span class="unit"> °م</span>
+        <div class="sub" id="coolingStatus">—</div>
+        <div class="hint">* بيانات محاكاة لحد ما يتركّب حساس حرارة حقيقي</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>عدد الأشخاص الآن</h3>
+      <div class="stat-block">
+        <span class="big" id="peopleVal" style="color:var(--green);">0</span>
+        <div class="sub" id="occupancyStatus">—</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>مصدر بيانات الإشغال</h3>
+      <div class="stat-block">
+        <span class="badge" id="sourceBadge" style="font-size:.8rem;">—</span>
+        <div class="sub" id="sourceAge"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- الصف الخامس: صحة البلاط -->
   <div class="card">
     <h3>صحة البلاطات (كفاءة كل بلاطة %)</h3>
     <div class="tiles-grid" id="tilesGrid"></div>
@@ -197,7 +230,7 @@
 
 </main>
 
-<footer>PowerStep Grid — بيانات محاكاة حية (Simulation Mode) · تحدَّث كل ثانية</footer>
+<footer>PowerStep Grid — الطاقة والحرارة: محاكاة · الإشغال: حقيقي من ESP32 عند الاتصال، وإلا محاكاة تلقائيًا · تحدَّث كل ثانية</footer>
 
 <script>
 const API = "http://localhost:8000";
@@ -263,6 +296,30 @@ async function refreshLive(){
     }
 
     document.getElementById('footfallNow').textContent = Math.round(d.footfall);
+
+    // درجة الحرارة والتبريد
+    document.getElementById('tempVal').textContent = d.temperature_c.toFixed(1);
+    document.getElementById('coolingStatus').textContent = d.cooling_active
+      ? '❄️ التبريد شغال دلوقتي' : 'التبريد متوقف';
+
+    // عدد الأشخاص + حالة الإشغال
+    document.getElementById('peopleVal').textContent = d.people_count;
+    document.getElementById('occupancyStatus').textContent = d.occupancy ? 'المكان مشغول' : 'المكان فاضي';
+
+    // مصدر بيانات الإشغال: حقيقي من ESP32 ولا محاكاة
+    const sourceBadge = document.getElementById('sourceBadge');
+    const sourceAge = document.getElementById('sourceAge');
+    if (d.occupancy_source === 'real_esp32') {
+      sourceBadge.textContent = '✅ بيانات حقيقية من ESP32';
+      sourceBadge.className = 'badge on';
+      sourceAge.textContent = (d.seconds_since_real_update !== null)
+        ? `آخر تحديث منذ ${Math.round(d.seconds_since_real_update)} ثانية`
+        : '';
+    } else {
+      sourceBadge.textContent = '⏳ بيانات محاكاة (مفيش اتصال حالي بالـ ESP32)';
+      sourceBadge.className = 'badge wait';
+      sourceAge.textContent = '';
+    }
 
     // الأحمال
     const loadsList = document.getElementById('loadsList');
