@@ -3,124 +3,181 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PowerStep Grid — لوحة التحكم الحية</title>
+<title>PowerStep Grid — لوحة التحكم الاحترافية</title>
 <script src="vendor/chart.umd.js"></script>
 <style>
-  @font-face{
-    font-family:'Cairo';
-    src:url('vendor/fonts/Cairo-Regular.ttf');
-    font-weight:400 800;
-  }
-  :root{
-    --green:#1f7a5c; --green-dark:#0b2f2a; --blue:#16487a; --purple:#6a1f8a; --orange:#b5590a;
-    --bg:#f4f6f9; --card:#ffffff; --ink:#1f2430; --muted:#6b7280; --line:#e5e8ee;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font-family:'Cairo',sans-serif; direction:rtl;
-  }
-  .mono{ font-family:'Consolas','Courier New',monospace; }
+  @font-face { font-family: 'Cairo'; src: url('vendor/fonts/Cairo-Regular.ttf'); font-weight: 400 800; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  header{
-    background:linear-gradient(120deg,var(--green-dark),var(--green) 70%);
-    color:#fff; padding:18px 26px; display:flex; align-items:center; justify-content:space-between;
-    flex-wrap:wrap; gap:10px;
+  :root {
+    --green: #10b981;
+    --green-dark: #065f46;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --orange: #f59e0b;
+    --danger: #ef4444;
+    --bg-start: #0f172a;
+    --bg-end: #1e293b;
+    --card-bg: rgba(255,255,255,0.08);
+    --card-border: rgba(255,255,255,0.12);
+    --text-primary: #f1f5f9;
+    --text-muted: #94a3b8;
+    --shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
   }
-  header .title{ font-size:1.35rem; font-weight:800; }
-  header .subtitle{ font-size:.78rem; opacity:.85; margin-top:2px; }
-  header .status{
-    display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.12);
-    padding:7px 16px; border-radius:20px; font-size:.82rem;
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+    font-family: 'Cairo', sans-serif;
+    color: var(--text-primary);
+    direction: rtl;
+    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
   }
-  header .dot{ width:9px; height:9px; border-radius:50%; background:#6ee7a8; box-shadow:0 0 0 3px rgba(110,231,168,.25); }
-  header .sim-time{ font-weight:700; }
 
-  main{ padding:20px 26px 40px; max-width:1300px; margin:0 auto; }
-
-  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
-  .grid2{ display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:16px; }
-  .grid2b{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
-  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
-  @media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} .grid2, .grid2b, .grid3{grid-template-columns:1fr;} }
-
-  .card{
-    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px;
+  /* تأثير خلفية متحرك (أوربيتال) */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 40%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+    animation: rotateBg 40s linear infinite;
+    z-index: 0;
+    pointer-events: none;
   }
-  .card h3{ margin:0 0 12px; font-size:.85rem; color:var(--muted); font-weight:700; }
+  @keyframes rotateBg { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; }
-  .gauge{
-    width:120px; height:120px; border-radius:50%; position:relative;
-    display:flex; align-items:center; justify-content:center;
-    background:conic-gradient(var(--ring-color) calc(var(--pct) * 1%), var(--line) 0);
+  main, header, footer { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; }
+
+  /* ===== الهيدر ===== */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 18px 28px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    margin-bottom: 28px;
+    box-shadow: var(--shadow);
+  }
+  header .title { font-size: 1.6rem; font-weight: 800; background: linear-gradient(135deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header .subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; -webkit-text-fill-color: var(--text-muted); }
+  .header-status { display: flex; align-items: center; gap: 20px; }
+  .esp-indicator { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); padding: 6px 16px; border-radius: 40px; font-size: 0.75rem; }
+  .esp-dot { width: 10px; height: 10px; border-radius: 50%; background: #475569; transition: 0.3s; box-shadow: 0 0 0 2px rgba(71, 85, 105, 0.3); }
+  .esp-dot.active { background: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+  .sim-clock { font-family: 'Consolas', monospace; font-weight: 700; background: rgba(0,0,0,0.3); padding: 4px 14px; border-radius: 30px; font-size: 0.9rem; }
+
+  /* ===== البطاقات العامة ===== */
+  .card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, border-color 0.3s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-2px); }
+  .card h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 14px; font-weight: 700; }
+
+  /* ===== شبكات ===== */
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 18px; }
+  .grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid2b { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 18px; }
+  .grid-single { margin-bottom: 18px; }
+
+  @media (max-width: 992px) {
+    .grid4 { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+    .grid2b { grid-template-columns: 1fr; }
+    .grid3 { grid-template-columns: 1fr; }
+  }
+
+  /* ===== المقاييس الدائرية ===== */
+  .gauge-wrap { display: flex; flex-direction: column; align-items: center; }
+  .gauge {
+    width: 110px; height: 110px; border-radius: 50%; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(255,255,255,0.1) 0);
     transition: background 0.6s ease;
   }
-  .gauge::before{
-    content:""; position:absolute; width:88px; height:88px; border-radius:50%; background:var(--card);
+  .gauge::before {
+    content: ""; position: absolute; width: 82px; height: 82px; border-radius: 50%;
+    background: #1e293b; border: 2px solid rgba(255,255,255,0.05);
   }
-  .gauge .val{ position:relative; z-index:1; font-weight:800; font-size:1.15rem; }
-  .gauge .val small{ display:block; font-size:.62rem; font-weight:600; color:var(--muted); margin-top:2px; }
+  .gauge .val { position: relative; z-index: 1; font-weight: 800; font-size: 1.1rem; text-align: center; }
+  .gauge .val small { display: block; font-size: 0.55rem; font-weight: 600; color: var(--text-muted); margin-top: 2px; }
 
-  .battery{
-    width:100%; height:34px; background:var(--line); border-radius:8px; overflow:hidden; position:relative;
-  }
-  .battery .fill{
-    height:100%; background:linear-gradient(90deg,var(--blue),#2d7dd2); transition:width .6s ease;
-  }
-  .battery .label{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-weight:800; color:#fff; font-size:.85rem; text-shadow:0 1px 2px rgba(0,0,0,.25);
-  }
-  .source-tag{ margin-top:8px; font-size:.72rem; text-align:center; color:var(--muted); }
-  .source-tag b{ color:var(--green); }
-  .source-tag.grid b{ color:var(--orange); }
+  /* ===== البطارية ===== */
+  .battery { width: 100%; height: 30px; background: rgba(255,255,255,0.1); border-radius: 30px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+  .battery .fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.6s ease; }
+  .battery .label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
-  .footfall-strip{
-    display:flex; gap:2px; height:44px; align-items:flex-end; overflow:hidden; border-radius:6px;
-  }
-  .footfall-strip .bar{
-    flex:1; background:var(--green); border-radius:2px 2px 0 0; min-width:2px; transition:height .4s ease;
-    opacity:.85;
-  }
+  /* ===== شريط الحركة ===== */
+  .footfall-strip { display: flex; gap: 3px; height: 50px; align-items: flex-end; overflow: hidden; border-radius: 8px; }
+  .footfall-strip .bar { flex: 1; background: linear-gradient(180deg, #10b981, #065f46); border-radius: 4px 4px 0 0; transition: height 0.3s ease; min-width: 3px; }
 
-  .loads-list .row{
-    display:flex; align-items:center; justify-content:space-between; padding:9px 0;
-    border-bottom:1px dashed var(--line); font-size:.85rem;
-  }
-  .loads-list .row:last-child{ border-bottom:none; }
-  .badge{
-    padding:4px 11px; border-radius:20px; font-size:.72rem; font-weight:700; color:#fff; white-space:nowrap;
-  }
-  .badge.on{ background:var(--green); }
-  .badge.off{ background:#9aa3ad; }
-  .badge.wait{ background:var(--orange); }
+  /* ===== الأحمال ===== */
+  .loads-list .row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.85rem; }
+  .loads-list .row:last-child { border: none; }
+  .badge { padding: 4px 14px; border-radius: 40px; font-size: 0.65rem; font-weight: 700; color: #fff; white-space: nowrap; background: #475569; }
+  .badge.on { background: #10b981; }
+  .badge.off { background: #475569; }
+  .badge.wait { background: #f59e0b; }
+  .badge.danger { background: #ef4444; }
 
-  .alerts-list .alert{
-    display:flex; align-items:flex-start; gap:9px; padding:9px 0; border-bottom:1px dashed var(--line);
-    font-size:.83rem; line-height:1.5;
+  /* ===== التنبيهات ===== */
+  .alerts-list .alert { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.85rem; }
+  .alerts-list .alert:last-child { border: none; }
+  .alerts-list .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .dot.warning { background: #f59e0b; box-shadow: 0 0 10px #f59e0b55; }
+  .dot.info { background: #3b82f6; box-shadow: 0 0 10px #3b82f655; }
+  .dot.success { background: #10b981; box-shadow: 0 0 10px #10b98155; }
+  .dot.danger { background: #ef4444; box-shadow: 0 0 10px #ef444455; }
+  .alerts-empty { color: var(--text-muted); text-align: center; padding: 20px 0; font-size: 0.85rem; }
+
+  /* ===== البلاطات ===== */
+  .tiles-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .tile-chip {
+    aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; color: #fff; transition: 0.2s; padding: 4px; text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
   }
-  .alerts-list .alert:last-child{ border-bottom:none; }
-  .alerts-list .dot{ width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; }
-  .dot.warning{ background:var(--orange); }
-  .dot.info{ background:var(--blue); }
-  .dot.success{ background:var(--green); }
-  .dot.danger{ background:#c0392b; }
-  .alerts-empty{ color:var(--muted); font-size:.82rem; text-align:center; padding:20px 0; }
+  .tile-chip.isolated { background: #334155 !important; border-color: #ef4444; opacity: 0.6; }
+  @media (max-width: 600px) { .tiles-grid { grid-template-columns: repeat(3, 1fr); } }
 
-  .tiles-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
-  .tile-chip{
-    aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center;
-    font-size:.72rem; font-weight:800; color:#fff;
-  }
+  /* ===== What-If Slider ===== */
+  .whatif-container { display: flex; gap: 30px; flex-wrap: wrap; }
+  .whatif-item { flex: 1; min-width: 180px; }
+  .whatif-item label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+  .whatif-item input[type="range"] { width: 100%; accent-color: #10b981; background: transparent; cursor: pointer; height: 6px; border-radius: 10px; background: rgba(255,255,255,0.15); }
+  .whatif-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #10b981; box-shadow: 0 0 15px #10b98177; }
+  .whatif-result { margin-top: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 12px 16px; border-radius: 16px; text-align: center; }
+  .whatif-result span { font-size: 1.8rem; font-weight: 800; color: #10b981; }
 
-  .stat-block{ text-align:center; padding:6px 0; }
-  .stat-block .big{ font-family:'Consolas','Courier New',monospace; font-size:2rem; font-weight:800; }
-  .stat-block .unit{ font-size:1rem; color:var(--muted); }
-  .stat-block .sub{ margin-top:8px; font-size:.75rem; color:var(--muted); }
-  .stat-block .hint{ margin-top:4px; font-size:.66rem; color:var(--muted); opacity:.8; }
+  /* ===== التنسيقات العامة ===== */
+  .stat-block { text-align: center; padding: 4px 0; }
+  .stat-block .big { font-family: 'Consolas', monospace; font-size: 2.2rem; font-weight: 800; }
+  .stat-block .unit { font-size: 0.9rem; color: var(--text-muted); }
+  .stat-block .sub { margin-top: 6px; font-size: 0.75rem; color: var(--text-muted); }
+  .stat-block .hint { font-size: 0.6rem; opacity: 0.5; margin-top: 4px; }
+  .mono { font-family: 'Consolas', monospace; }
+  footer { text-align: center; padding: 30px 0 10px; color: var(--text-muted); font-size: 0.7rem; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 20px; }
 
-  footer{ text-align:center; color:var(--muted); font-size:.75rem; padding:20px 0 30px; }
+  /* تحسين مظهر Chart.js في الوضع الداكن */
+  canvas { filter: brightness(1.2); }
 </style>
 </head>
 <body>
@@ -128,11 +185,14 @@
 <header>
   <div>
     <div class="title">⚡ PowerStep Grid</div>
-    <div class="subtitle">لوحة التحكم الحية — الأرضية المولّدة للطاقة المتكاملة</div>
+    <div class="subtitle">المنصة المتكاملة لإدارة الطاقة الذكية</div>
   </div>
-  <div class="status">
-    <span class="dot"></span>
-    <span>اليوم <span id="dayNum" class="mono">1</span> — الساعة المحاكاة <span id="simTime" class="sim-time mono">--:--</span></span>
+  <div class="header-status">
+    <div class="esp-indicator">
+      <span class="esp-dot" id="espDot"></span>
+      <span id="espStatusText">محاكاة</span>
+    </div>
+    <span class="sim-clock">📅 يوم <span id="dayNum">1</span> · <span id="simTime">--:--</span></span>
   </div>
 </header>
 
@@ -141,190 +201,201 @@
   <!-- الصف الأول: المؤشرات الأساسية -->
   <div class="grid4">
     <div class="card gauge-wrap">
-      <h3>التوليد اللحظي</h3>
-      <div class="gauge" id="gaugeGen" style="--ring-color:var(--green); --pct:0;">
+      <h3>⚡ التوليد اللحظي</h3>
+      <div class="gauge" id="gaugeGen" style="--ring-color:#10b981; --pct:0;">
         <div class="val"><span id="genVal">0.0</span><small>واط</small></div>
       </div>
     </div>
     <div class="card gauge-wrap">
-      <h3>الاستهلاك اللحظي</h3>
-      <div class="gauge" id="gaugeCon" style="--ring-color:var(--orange); --pct:0;">
+      <h3>🔌 الاستهلاك اللحظي</h3>
+      <div class="gauge" id="gaugeCon" style="--ring-color:#f59e0b; --pct:0;">
         <div class="val"><span id="conVal">0.0</span><small>واط</small></div>
       </div>
     </div>
     <div class="card gauge-wrap">
-      <h3>الاكتفاء الذاتي اليوم</h3>
-      <div class="gauge" id="gaugeSelf" style="--ring-color:var(--purple); --pct:0;">
+      <h3>♻️ الاكتفاء الذاتي</h3>
+      <div class="gauge" id="gaugeSelf" style="--ring-color:#8b5cf6; --pct:0;">
         <div class="val"><span id="selfVal">0</span><small>%</small></div>
       </div>
     </div>
     <div class="card">
-      <h3>شحن وحدة التخزين</h3>
-      <div class="battery">
-        <div class="fill" id="battFill" style="width:0%"></div>
-        <div class="label"><span id="battVal">0</span>%</div>
-      </div>
-      <div class="source-tag" id="sourceTag">المصدر: <b id="sourceLabel">—</b></div>
+      <h3>🔋 وحدة التخزين</h3>
+      <div class="battery"><div class="fill" id="battFill" style="width:0%"></div><div class="label"><span id="battVal">0</span>%</div></div>
+      <div class="source-tag" style="margin-top:10px; text-align:center; font-size:0.75rem; color:var(--text-muted);">المصدر: <b id="sourceLabel" style="color:#10b981;">—</b></div>
     </div>
   </div>
 
-  <!-- الصف الثاني: الرسم البياني + شريط الحركة -->
+  <!-- الصف الثاني: الرسم البياني + الحركة -->
   <div class="grid2">
     <div class="card">
-      <h3>الطاقة التراكمية — المولَّدة مقابل المستهلكة (Wh)</h3>
-      <canvas id="energyChart" height="110"></canvas>
+      <h3>📈 الطاقة التراكمية (Wh)</h3>
+      <canvas id="energyChart" height="100"></canvas>
     </div>
     <div class="card">
-      <h3>كثافة الحركة الحية (خطوة/دقيقة)</h3>
+      <h3>🚶 كثافة الحركة</h3>
       <div class="footfall-strip" id="footfallStrip"></div>
-      <div style="margin-top:10px; text-align:center;">
-        <span class="mono" style="font-size:1.4rem; font-weight:800; color:var(--green);" id="footfallNow">0</span>
-        <div style="font-size:.72rem; color:var(--muted);">خطوة/دقيقة الآن</div>
-      </div>
+      <div style="text-align:center; margin-top:10px;"><span class="mono" style="font-size:1.6rem; font-weight:800; color:#10b981;" id="footfallNow">0</span><div style="font-size:0.7rem; color:var(--text-muted);">خطوة/دقيقة</div></div>
     </div>
   </div>
 
-  <!-- الصف الثالث: الأحمال + التنبيهات -->
+  <!-- الصف الثالث: What-If Slider (الميزة الجديدة) -->
+  <div class="card grid-single">
+    <h3>🎛️ محاكاة السيناريوهات (What-If Slider)</h3>
+    <div class="whatif-container">
+      <div class="whatif-item">
+        <label>⚡ الطاقة لكل خطوة <span id="stepEnergyLabel">2.0</span> جول</label>
+        <input type="range" id="stepSlider" min="0.5" max="5.0" step="0.1" value="2.0">
+      </div>
+      <div class="whatif-item">
+        <label>🔢 عدد البلاطات <span id="tilesCountLabel">12</span></label>
+        <input type="range" id="tilesSlider" min="4" max="30" step="1" value="12">
+      </div>
+    </div>
+    <div class="whatif-result">
+      نسبة الاكتفاء الذاتي المتوقعة حالياً: <span id="predictedSelf">11</span>%
+    </div>
+  </div>
+
+  <!-- الصف الرابع: الأحمال + التنبيهات -->
   <div class="grid2b">
     <div class="card">
-      <h3>لوحة التحكم بالأحمال</h3>
+      <h3>🔧 الأحمال الذكية</h3>
       <div class="loads-list" id="loadsList"></div>
     </div>
     <div class="card">
-      <h3>تنبيهات الذكاء الاصطناعي</h3>
-      <div class="alerts-list" id="alertsList"><div class="alerts-empty">لا توجد تنبيهات حاليًا</div></div>
+      <h3>🔔 تنبيهات النظام</h3>
+      <div class="alerts-list" id="alertsList"><div class="alerts-empty">✨ لا توجد تنبيهات</div></div>
     </div>
   </div>
 
-  <!-- الصف الرابع: بيانات الإشغال الحية (حقيقية من ESP32 أو محاكاة) + الحرارة -->
+  <!-- الصف الخامس: الحرارة + الإشغال + المصدر -->
   <div class="grid3">
     <div class="card">
-      <h3>درجة الحرارة الحالية</h3>
-      <div class="stat-block">
-        <span class="big" id="tempVal" style="color:var(--orange);">--</span><span class="unit"> °م</span>
-        <div class="sub" id="coolingStatus">—</div>
-        <div class="hint">* بيانات محاكاة لحد ما يتركّب حساس حرارة حقيقي</div>
-      </div>
+      <h3>🌡️ درجة الحرارة</h3>
+      <div class="stat-block"><span class="big" id="tempVal" style="color:#f59e0b;">--</span><span class="unit"> °م</span><div class="sub" id="coolingStatus">—</div></div>
     </div>
     <div class="card">
-      <h3>عدد الأشخاص الآن</h3>
-      <div class="stat-block">
-        <span class="big" id="peopleVal" style="color:var(--green);">0</span>
-        <div class="sub" id="occupancyStatus">—</div>
-      </div>
+      <h3>👥 عدد الأشخاص</h3>
+      <div class="stat-block"><span class="big" id="peopleVal" style="color:#10b981;">0</span><div class="sub" id="occupancyStatus">—</div></div>
     </div>
     <div class="card">
-      <h3>مصدر بيانات الإشغال</h3>
-      <div class="stat-block">
-        <span class="badge" id="sourceBadge" style="font-size:.8rem;">—</span>
-        <div class="sub" id="sourceAge"></div>
-      </div>
+      <h3>📡 مصدر الإشغال</h3>
+      <div class="stat-block"><span class="badge" id="sourceBadge" style="font-size:0.8rem;">—</span><div class="sub" id="sourceAge"></div></div>
     </div>
   </div>
 
-  <!-- الصف الخامس: صحة البلاط -->
-  <div class="card">
-    <h3>صحة البلاطات (كفاءة كل بلاطة %)</h3>
+  <!-- الصف السادس: صحة البلاطات مع عرض العزل -->
+  <div class="card grid-single">
+    <h3>🟩 صحة البلاطات (كفاءة كل بلاطة)</h3>
     <div class="tiles-grid" id="tilesGrid"></div>
   </div>
 
 </main>
 
-<footer>PowerStep Grid — الطاقة والحرارة: محاكاة · الإشغال: حقيقي من ESP32 عند الاتصال، وإلا محاكاة تلقائيًا · تحدَّث كل ثانية</footer>
+<footer>⚡ PowerStep Grid — هندسة الطاقة الذكية | تحديث لحظي كل ثانية</footer>
 
 <script>
 const API = "http://localhost:8000";
 
+// ===== الرسوم البيانية =====
 let chart;
-function initChart(){
+function initChart() {
   const ctx = document.getElementById('energyChart').getContext('2d');
   chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: [],
       datasets: [
-        { label:'طاقة مولَّدة (Wh)', data:[], borderColor:'#1f7a5c', backgroundColor:'rgba(31,122,92,.08)', fill:true, tension:.3, pointRadius:0, borderWidth:2 },
-        { label:'طاقة مستهلَكة (Wh)', data:[], borderColor:'#b5590a', backgroundColor:'rgba(181,89,10,.06)', fill:true, tension:.3, pointRadius:0, borderWidth:2, borderDash:[5,3] },
+        { label:'مولَّدة (Wh)', data:[], borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', fill:true, tension:0.4, pointRadius:0, borderWidth:3 },
+        { label:'مستهلكة (Wh)', data:[], borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, pointRadius:0, borderWidth:2, borderDash:[5,4] },
       ]
     },
     options: {
-      responsive:true,
-      animation:false,
-      plugins:{ legend:{ position:'top', rtl:true, labels:{ font:{family:'Cairo', size:11} } } },
-      scales:{
-        x:{ ticks:{ font:{family:'Cairo', size:9}, maxTicksLimit:8 } },
-        y:{ ticks:{ font:{family:'Cairo', size:9} } }
+      responsive: true,
+      animation: false,
+      plugins: { legend: { position: 'top', rtl: true, labels: { color: '#94a3b8', font: { family: 'Cairo', size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 8 } },
+        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
       }
     }
   });
 }
 
-function setGauge(id, pct, valEl, val){
-  document.getElementById(id).style.setProperty('--pct', Math.min(pct,100));
-  document.getElementById(valEl).textContent = val;
+// ===== دوال مساعدة =====
+function setGauge(id, pct, valEl, val) {
+  document.getElementById(id).style.setProperty('--pct', Math.min(pct, 100));
+  document.getElementById(valEl).textContent = typeof val === 'number' ? val.toFixed(1) : val;
 }
 
-function loadBadgeClass(state){
-  if(state.startsWith('ON')) return 'on';
-  if(state.startsWith('Standby')) return 'wait';
+function loadBadgeClass(state) {
+  if (state.includes('ON')) return 'on';
+  if (state.includes('Standby')) return 'wait';
+  if (state.includes('معزولة')) return 'danger';
   return 'off';
 }
 
-async function refreshLive(){
-  try{
+// ===== تحديث البيانات الحية =====
+async function refreshLive() {
+  try {
     const r = await fetch(API + "/api/live");
     const d = await r.json();
 
     document.getElementById('dayNum').textContent = d.day;
     document.getElementById('simTime').textContent = d.sim_time;
 
-    setGauge('gaugeGen', d.generation_w * 10, 'genVal', d.generation_w.toFixed(1));
-    setGauge('gaugeCon', d.consumption_w * 10, 'conVal', d.consumption_w.toFixed(1));
+    setGauge('gaugeGen', d.generation_w * 10, 'genVal', d.generation_w);
+    setGauge('gaugeCon', d.consumption_w * 10, 'conVal', d.consumption_w);
     setGauge('gaugeSelf', d.self_sufficiency_pct, 'selfVal', Math.round(d.self_sufficiency_pct));
 
     document.getElementById('battFill').style.width = d.storage_soc_pct + '%';
     document.getElementById('battVal').textContent = Math.round(d.storage_soc_pct);
-
-    const sourceTag = document.getElementById('sourceTag');
-    const sourceLabel = document.getElementById('sourceLabel');
-    if(d.power_source === 'harvested'){
-      sourceTag.classList.remove('grid');
-      sourceLabel.textContent = 'الطاقة المولَّدة';
-    } else {
-      sourceTag.classList.add('grid');
-      sourceLabel.textContent = 'الشبكة الاحتياطية';
-    }
+    document.getElementById('sourceLabel').textContent = d.power_source === 'harvested' ? 'الطاقة المولَّدة' : 'الشبكة الاحتياطية';
+    document.getElementById('sourceLabel').style.color = d.power_source === 'harvested' ? '#10b981' : '#f59e0b';
 
     document.getElementById('footfallNow').textContent = Math.round(d.footfall);
 
-    // درجة الحرارة والتبريد
+    // الحرارة
     document.getElementById('tempVal').textContent = d.temperature_c.toFixed(1);
-    document.getElementById('coolingStatus').textContent = d.cooling_active
-      ? '❄️ التبريد شغال دلوقتي' : 'التبريد متوقف';
+    document.getElementById('coolingStatus').textContent = d.cooling_active ? '❄️ التبريد نشط' : '✅ التبريد متوقف';
 
-    // عدد الأشخاص + حالة الإشغال
+    // الإشغال
     document.getElementById('peopleVal').textContent = d.people_count;
-    document.getElementById('occupancyStatus').textContent = d.occupancy ? 'المكان مشغول' : 'المكان فاضي';
+    document.getElementById('occupancyStatus').textContent = d.occupancy ? '🟢 المكان مشغول' : '⚪ المكان فاضي';
 
-    // مصدر بيانات الإشغال: حقيقي من ESP32 ولا محاكاة
+    // مؤشر ESP32 في الهيدر
+    const espDot = document.getElementById('espDot');
+    const espStatusText = document.getElementById('espStatusText');
+    if (d.occupancy_source === 'real_esp32') {
+      espDot.className = 'esp-dot active';
+      espStatusText.textContent = '📡 متصل';
+      espStatusText.style.color = '#10b981';
+    } else {
+      espDot.className = 'esp-dot';
+      espStatusText.textContent = '🔄 محاكاة';
+      espStatusText.style.color = '#94a3b8';
+    }
+
+    // مصدر الإشغال (البادج)
     const sourceBadge = document.getElementById('sourceBadge');
     const sourceAge = document.getElementById('sourceAge');
     if (d.occupancy_source === 'real_esp32') {
-      sourceBadge.textContent = '✅ بيانات حقيقية من ESP32';
+      sourceBadge.textContent = '✅ حقيقي من ESP32';
       sourceBadge.className = 'badge on';
-      sourceAge.textContent = (d.seconds_since_real_update !== null)
-        ? `آخر تحديث منذ ${Math.round(d.seconds_since_real_update)} ثانية`
-        : '';
+      sourceAge.textContent = (d.seconds_since_real_update !== null) ? `آخر تحديث منذ ${Math.round(d.seconds_since_real_update)} ث` : '';
     } else {
-      sourceBadge.textContent = '⏳ بيانات محاكاة (مفيش اتصال حالي بالـ ESP32)';
+      sourceBadge.textContent = '⏳ محاكاة (انتظار ESP32)';
       sourceBadge.className = 'badge wait';
       sourceAge.textContent = '';
     }
 
+    // تحديث نسبة الاكتفاء في شريط What-If
+    document.getElementById('predictedSelf').textContent = Math.round(d.self_sufficiency_pct);
+
     // الأحمال
     const loadsList = document.getElementById('loadsList');
     loadsList.innerHTML = '';
-    Object.values(d.loads).forEach(l=>{
+    Object.values(d.loads).forEach(l => {
       const row = document.createElement('div');
       row.className = 'row';
       row.innerHTML = `<span>${l.name}</span><span class="badge ${loadBadgeClass(l.state)}">${l.state}</span>`;
@@ -333,11 +404,11 @@ async function refreshLive(){
 
     // التنبيهات
     const alertsList = document.getElementById('alertsList');
-    if(d.alerts.length === 0){
-      alertsList.innerHTML = '<div class="alerts-empty">لا توجد تنبيهات حاليًا</div>';
+    if (d.alerts.length === 0) {
+      alertsList.innerHTML = '<div class="alerts-empty">✨ النظام يعمل بسلاسة</div>';
     } else {
       alertsList.innerHTML = '';
-      d.alerts.forEach(a=>{
+      d.alerts.forEach(a => {
         const row = document.createElement('div');
         row.className = 'alert';
         row.innerHTML = `<span class="dot ${a.level}"></span><span>${a.text}</span>`;
@@ -345,57 +416,97 @@ async function refreshLive(){
       });
     }
 
-    // صحة البلاط
+    // صحة البلاطات (مع دعم العزل التلقائي)
     const tilesGrid = document.getElementById('tilesGrid');
     tilesGrid.innerHTML = '';
-    d.tiles.forEach(t=>{
+    d.tiles.forEach(t => {
       const chip = document.createElement('div');
       const eff = t.efficiency_pct;
-      const color = eff >= 90 ? '#1f7a5c' : eff >= 80 ? '#3f9d6f' : eff >= 65 ? '#b5590a' : '#c0392b';
-      chip.className = 'tile-chip';
+      const isIsolated = eff < 60;
+      let color = '#10b981';
+      if (isIsolated) color = '#334155';
+      else if (eff >= 90) color = '#10b981';
+      else if (eff >= 75) color = '#f59e0b';
+      else if (eff >= 60) color = '#ef4444';
+      
+      chip.className = `tile-chip${isIsolated ? ' isolated' : ''}`;
       chip.style.background = color;
-      chip.textContent = `#${t.id} ${Math.round(eff)}%`;
+      chip.textContent = `#${t.id} ${Math.round(eff)}%${isIsolated ? ' 🚫' : ''}`;
       tilesGrid.appendChild(chip);
     });
 
-  }catch(e){
-    console.error("تعذّر الاتصال بالسيرفر:", e);
+  } catch (e) {
+    console.error("❌ تعذر الاتصال بالسيرفر:", e);
+    // إظهار رسالة خطأ في واجهة المستخدم بدلاً من تركها فارغة
+    document.querySelectorAll('.stat-block .big').forEach(el => {
+      if (el.id !== 'peopleVal' && el.id !== 'tempVal') el.textContent = '--';
+    });
   }
 }
 
-async function refreshHistory(){
-  try{
+// ===== تحديث التاريخ (الرسم البياني) =====
+async function refreshHistory() {
+  try {
     const r = await fetch(API + "/api/history");
     const d = await r.json();
-    if(!chart) return;
-    chart.data.labels = d.t.map(h=>{
-      const hh = Math.floor(h); const mm = Math.round((h-hh)*60);
-      return `${hh}:${mm.toString().padStart(2,'0')}`;
+    if (!chart) return;
+    chart.data.labels = d.t.map(h => {
+      const hh = Math.floor(h);
+      const mm = Math.round((h - hh) * 60);
+      return `${hh}:${mm.toString().padStart(2, '0')}`;
     });
     chart.data.datasets[0].data = d.gen_wh;
     chart.data.datasets[1].data = d.con_wh;
     chart.update();
 
-    // شريط كثافة الحركة (آخر 40 نقطة)
+    // شريط كثافة الحركة
     const strip = document.getElementById('footfallStrip');
     strip.innerHTML = '';
     const recent = d.footfall.slice(-40);
     const max = Math.max(...recent, 1);
-    recent.forEach(v=>{
+    recent.forEach(v => {
       const bar = document.createElement('div');
       bar.className = 'bar';
-      bar.style.height = Math.max(4, (v/max)*44) + 'px';
+      bar.style.height = Math.max(4, (v / max) * 50) + 'px';
       strip.appendChild(bar);
     });
-  }catch(e){ /* silent */ }
+  } catch (e) { /* Silent */ }
 }
 
+// ===== التحكم في شرائح What-If =====
+document.getElementById('stepSlider').addEventListener('input', async function() {
+  const val = parseFloat(this.value);
+  document.getElementById('stepEnergyLabel').textContent = val.toFixed(1);
+  try {
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ energy_per_step: val })
+    });
+    refreshLive();
+  } catch (e) { console.error(e); }
+});
+
+document.getElementById('tilesSlider').addEventListener('input', async function() {
+  const val = parseInt(this.value);
+  document.getElementById('tilesCountLabel').textContent = val;
+  try {
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ num_tiles: val })
+    });
+    refreshLive();
+  } catch (e) { console.error(e); }
+});
+
+// ===== بدء التشغيل =====
 initChart();
 refreshLive();
 refreshHistory();
 setInterval(refreshLive, 1000);
 setInterval(refreshHistory, 4000);
-</script>
 
+</script>
 </body>
 </html>
