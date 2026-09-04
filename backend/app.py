@@ -15,6 +15,10 @@ PowerStep Grid — Backend Server (app.py) — نسخة هجينة (Real + Simul
 
 import threading
 import time
+import csv
+import json
+import os
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +37,35 @@ app.add_middleware(
 )
 
 sim = PowerStepSimulator()
+
+# ============================================================
+# 🆕 تسجيل بيانات الإشغال الحقيقية في ملف CSV (لتدريب الموديل لاحقًا)
+# ============================================================
+# نفس شكل ملف raw_data_rssi.csv بالظبط (source, data, ts) عشان يبقى متوافق
+# مباشرة مع خط أنابيب التدريب — بدل سكريبت منفصل بيراقب الـ API من برّه،
+# التسجيل بيحصل هنا في نفس لحظة وصول القراءة الحقيقية من الـ ESP32 (أدق
+# توقيتًا ومفيش تكرار/فوات ممكن يحصل مع polling من سكريبت خارجي).
+WIFI_DATASET_PATH = "wifi_dataset.csv"
+WIFI_NODE_ID = "corridor_node_1"   # 🔧 غيّريه لو العقدة عندها اسم مختلف
+
+
+def _log_occupancy_event(people_count: int):
+    file_exists = os.path.isfile(WIFI_DATASET_PATH) and os.path.getsize(WIFI_DATASET_PATH) > 0
+
+    inner_ts = datetime.now().isoformat()
+    data_obj = {
+        "node_id": WIFI_NODE_ID,
+        "people_count": people_count,
+        "ts": inner_ts,
+    }
+    outer_ts = datetime.now().isoformat()
+
+    # utf-8-sig يضيف BOM في أول الملف — بالظبط زي ملف RSSI الأصلي
+    with open(WIFI_DATASET_PATH, "a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["source", "data", "ts"])
+        writer.writerow(["wifi_occupancy", json.dumps(data_obj), outer_ts])
 
 
 # ============================================================
@@ -125,6 +158,7 @@ def ingest_real_reading(payload: dict):
         }
 
     sim.ingest_occupancy(people_count)
+    _log_occupancy_event(people_count)   # 🆕 تسجيل الحدث في wifi_dataset.csv بنفس شكل ملف RSSI
 
     return {
         "status": "ok",
