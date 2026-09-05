@@ -49,23 +49,39 @@ WIFI_DATASET_PATH = "wifi_dataset.csv"
 WIFI_NODE_ID = "corridor_node_1"   # 🔧 غيّريه لو العقدة عندها اسم مختلف
 
 
-def _log_occupancy_event(people_count: int):
-    file_exists = os.path.isfile(WIFI_DATASET_PATH) and os.path.getsize(WIFI_DATASET_PATH) > 0
+def _log_occupancy_event(people_count: int, csi_variance=None, csi_people_estimate=None, device_count_raw=None):
+    """
+    🆕 بيسجّل بيانات الـ CSI الفعلية (مش RSSI) — لأن ده التكنيك الأساسي اللي
+    نظامك شغال بيه (Probe + CSI مدموجين). كل الحقول دي اختيارية — لو الـ
+    ESP32 مبعتش أي حقل منهم، بيتسجّل null بدل ما نرفض الحدث كله.
 
-    inner_ts = datetime.now().isoformat()
-    data_obj = {
-        "node_id": WIFI_NODE_ID,
-        "people_count": people_count,
-        "ts": inner_ts,
-    }
-    outer_ts = datetime.now().isoformat()
+    ⚠️ الكتابة هنا "Best Effort": لو الملف مقفول من برنامج تاني (زي فتحه في
+    VS Code أو Excel وقت التسجيل)، بنسجّل تحذير في الكونسول ونكمل عادي —
+    مش المفروض قفل الملف بره يوقف استقبال بيانات الـ ESP32 الحقيقية.
+    """
+    try:
+        file_exists = os.path.isfile(WIFI_DATASET_PATH) and os.path.getsize(WIFI_DATASET_PATH) > 0
 
-    # utf-8-sig يضيف BOM في أول الملف — بالظبط زي ملف RSSI الأصلي
-    with open(WIFI_DATASET_PATH, "a", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["source", "data", "ts"])
-        writer.writerow(["wifi_occupancy", json.dumps(data_obj), outer_ts])
+        inner_ts = datetime.now().isoformat()
+        data_obj = {
+            "node_id": WIFI_NODE_ID,
+            "people_count": people_count,
+            "device_count_raw": device_count_raw,     # عدد الأجهزة الخام من Probe Requests
+            "csi_variance": csi_variance,               # قيمة التذبذب الخام من CSI
+            "csi_people_estimate": csi_people_estimate, # تقدير عدد الأشخاص من CSI لوحده (قبل الدمج)
+            "ts": inner_ts,
+        }
+        outer_ts = datetime.now().isoformat()
+
+        # utf-8-sig يضيف BOM في أول الملف — بالظبط زي ملف RSSI الأصلي
+        with open(WIFI_DATASET_PATH, "a", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["source", "data", "ts"])
+            writer.writerow(["wifi_occupancy", json.dumps(data_obj), outer_ts])
+
+    except OSError as e:
+        print(f"⚠️  تعذّر الكتابة في {WIFI_DATASET_PATH} (الملف مفتوح ببرنامج تاني؟): {e}")
 
 
 # ============================================================
@@ -132,14 +148,15 @@ def ingest_real_reading(payload: dict):
     """
     نقطة الاتصال دي بقت مفعّلة فعليًا (مش Stub زي الأول).
 
-    الشكل المتوقع من الـ ESP32 حاليًا (مرحلة عدّاد الأشخاص فقط، قبل ما يتضاف
-    حساس حرارة حقيقي):
-        { "people_count": 3 }
+    الشكل المتوقع من الـ ESP32 حاليًا (نظام Probe + CSI المدموج):
+        {
+          "people_count": 3,          <- الرقم النهائي المدموج (المُستخدَم في المحاكاة)
+          "device_count_raw": 2,      <- عدد الأجهزة الخام من Probe (اختياري)
+          "csi_variance": 0.42,       <- قيمة التذبذب الخام من CSI (اختياري)
+          "csi_people_estimate": 1    <- تقدير CSI لوحده قبل الدمج (اختياري)
+        }
 
-    لما يتضاف حساس حرارة حقيقي بعدين، هنوسّع نفس الفكرة بحقل زي:
-        { "people_count": 3, "temperature_c": 26.4 }
-    من غير ما نغيّر باقي الكود (API + الداشبورد) خالص — نفس فلسفة المشروع
-    الأصلية بالظبط.
+    كل الحقول ما عدا people_count اختيارية — لو مش موجودة بتتسجّل null.
     """
     people_count = payload.get("people_count")
 
@@ -157,12 +174,33 @@ def ingest_real_reading(payload: dict):
             "message": "قيمة 'people_count' لازم تكون رقم صحيح (integer).",
         }
 
+    def _safe_float(v):
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _safe_int(v):
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    csi_variance = _safe_float(payload.get("csi_variance"))
+    csi_people_estimate = _safe_int(payload.get("csi_people_estimate"))
+    device_count_raw = _safe_int(payload.get("device_count_raw"))
+
     sim.ingest_occupancy(people_count)
-    _log_occupancy_event(people_count)   # 🆕 تسجيل الحدث في wifi_dataset.csv بنفس شكل ملف RSSI
+    _log_occupancy_event(people_count, csi_variance, csi_people_estimate, device_count_raw)
 
     return {
         "status": "ok",
         "received_people_count": people_count,
+        "received_csi_variance": csi_variance,
         "occupancy_source_now": "real_esp32",
     }
 
